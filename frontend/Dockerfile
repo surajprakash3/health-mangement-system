@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy dependency manifests first (better layer caching)
 COPY package*.json ./
 
-# Clean install — only production logic handled at build time
-RUN npm ci
+# Install — regenerates lock file if stale (avoids 'Missing from lock file' errors)
+RUN npm install
 
 # Copy the rest of the source
 COPY . .
