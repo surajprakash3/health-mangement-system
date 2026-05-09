@@ -1,13 +1,37 @@
-FROM node:20
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1: Build the React application
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy dependency manifests first (better layer caching)
 COPY package*.json ./
 
-RUN npm install
+# Clean install — only production logic handled at build time
+RUN npm ci
 
+# Copy the rest of the source
 COPY . .
 
-EXPOSE 5173
+# Build the production bundle
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2: Serve the static bundle with Nginx
+# ─────────────────────────────────────────────────────────────────────────────
+FROM nginx:1.27-alpine AS runner
+
+# Remove the default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy our SPA-aware nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy the built React app from the builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+# Use exec form for proper signal handling
+CMD ["nginx", "-g", "daemon off;"]

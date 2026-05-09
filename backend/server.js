@@ -16,8 +16,24 @@ const app = express();
 
 app.use(express.json());
 
+const allowedOrigins = [
+    "http://localhost",
+    "http://localhost:80",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://localhost",
+    process.env.CLIENT_URL,          // Production domain from .env
+].filter(Boolean);
+
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: origin '${origin}' not allowed`));
+        }
+    },
     credentials: true
 }));
 
